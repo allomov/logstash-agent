@@ -1,0 +1,59 @@
+#!/bin/bash
+set -eux # -x for verbose logging to juju debug-log
+
+HOME=$PWD
+. ${HOME}/hooks/common.sh
+
+juju-log "Installing required Packages via apt-get - java"
+# was giving errors trying to install jre without update first.
+apt-get update
+apt-get -y install default-jre-headless curl
+# set redis listener
+juju-log "Install upstart init script"
+install -o root -g root -m 0644 ${HOME}/files/charm/logstash-agent.conf /etc/init/logstash-agent.conf
+sed -i "s|BASEPATH|${BASEPATH}|g" /etc/init/logstash-agent.conf
+juju-log "create logstash user"
+[ -z "$(id ${USER})"] && useradd ${USER}
+
+juju-log "install logstash and create config files"
+
+LOGSTASH_ARCHIVE_NAME=logstash-${VERSION}.tar.gz
+LOCAL_LOGSTASH_ARCHIVE=${HOME}/../files/charm/${LOGSTASH_ARCHIVE_NAME}
+TARGET_LOGSTASH_ARCHIVE=${WORKDIR}/${LOGSTASH_ARCHIVE_NAME}
+
+if [ -f ${LOCAL_LOGSTASH_ARCHIVE} ]
+then
+  sudo install -o root -g root -m 0644 ${LOCAL_LOGSTASH_ARCHIVE} ${TARGET_LOGSTASH_ARCHIVE}
+else
+  # Download logstash monolithic jar and checksum
+  wget -q -O ${TARGET_LOGSTASH_ARCHIVE} ${BASEURL}/${LOGSTASH_ARCHIVE_NAME}
+  if [[ $(md5sum "${TARGET_LOGSTASH_ARCHIVE}" | cut -d " " -f 1) != ${CHECKSUM} ]]; then
+    juju-log --log-level CRITICAL "Checksum of ${TARGET_LOGSTASH_ARCHIVE} failed"
+    exit 1
+  fi
+fi
+
+tar -xzf ${TARGET_LOGSTASH_ARCHIVE} -C ${WORKDIR}
+mv ${WORKDIR}/logstash-${VERSION} ${BASEPATH}
+
+juju-log "create skeleton dir"
+mkdir -p ${BASEPATH}/bin
+mkdir -p ${BASEPATH}/conf.d
+mkdir -p ${BASEPATH}/data
+
+juju-log "create skeleton dir"
+mkdir -p ${BASEPATH}/bin
+mkdir -p ${BASEPATH}/conf.d
+mkdir -p ${BASEPATH}/data
+mkdir -p ${BASEPATH}/logs
+
+
+juju-log "install syslog input config"
+install -o root -g root -m 0644 ${HOME}/files/charm/input_file_syslog.conf ${BASEPATH}/conf.d/input_file_syslog.conf
+sed -i "s|BASEPATH|${BASEPATH}|g" ${BASEPATH}/conf.d/input_file_syslog.conf
+
+juju-log "install file output - used until relationship is formed with logstash-indexer"
+echo "output { file { path => \"${BASEPATH}/logs/logstash-output.log\" } } " > ${BASEPATH}/conf.d/output_file.conf
+
+juju-log "Make sure ${USER} user owns the whole kit and kaboodle"
+chown -R ${USER}. ${BASEPATH}

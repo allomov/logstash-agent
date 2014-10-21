@@ -1,0 +1,4 @@
+#!/bin/bash
+
+juju-log "stopping logstash...  with feeling."
+initctl stop logstash-agent

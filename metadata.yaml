@@ -1,0 +1,14 @@
+name: "logstash-agent"
+summary: "Logstash agent server"
+subordinate: true
+maintainer: "Paul Cz <paul@paulcz.net>"
+description: |
+  Installs the logstash agent.   useless without logstash indexer.
+  outputs to logstash-indexer using redis.
+categories: ["misc"]
+requires:
+  juju-info:
+    interface: juju-info
+    scope: container  
+  input:
+    interface: redis

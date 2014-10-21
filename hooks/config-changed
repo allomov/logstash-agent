@@ -1,0 +1,57 @@
+#!/bin/bash
+
+set -eux # -x for verbose logging to juju debug-log
+HOME=$PWD
+. ${HOME}/hooks/common.sh
+
+#######################################################
+# Scan for known file inputs
+#######################################################
+juju-log "Scan host for known log files and add logstash file inputs for them"
+if [ -d "/var/log/apache2" ]; then
+  juju-log "install apach2 input config"
+  install -o root -g root -m 0644 ${HOME}/files/charm/input_file_apache.conf ${BASEPATH}/conf.d/input_file_apache.conf
+  sed -i "s|BASEPATH|${BASEPATH}|g" ${BASEPATH}/conf.d/input_file_apache.conf
+else
+  juju-log "remove apach2 input config"
+  [ -f ${BASEPATH}/conf.d/input_file_apache.conf ] && rm ${BASEPATH}/conf.d/input_file_apache.conf
+fi  
+
+#######################################################
+# Check for custom log settings
+#######################################################
+juju-log "Check for Custom Log settings: "
+CustomLogFile="$(config-get CustomLogFile)"
+CustomLogType="$(config-get CustomLogType)"
+if [ ! -z "${CustomLogFile}" ] && [ ! -z "${CustomLogType}" ]; then
+  juju-log "Found!   Setting up logstash input"
+  install -o root -g root -m 0644 ${HOME}/files/charm/input_file_custom.conf ${BASEPATH}/conf.d/input_file_custom.conf
+  sed -i "s|BASEPATH|${BASEPATH}|g" ${BASEPATH}/conf.d/input_file_custom.conf
+  sed -i "s|PATH|${CustomLogFile}|g" ${BASEPATH}/conf.d/input_file_custom.conf
+  sed -i "s|TYPE|${CustomLogType}|g" ${BASEPATH}/conf.d/input_file_custom.conf
+else
+  juju-log "Not Found!  remove logstash input"
+  [ -f ${BASEPATH}/conf.d/input_file_custom.conf ] && rm ${BASEPATH}/conf.d/input_file_custom.conf
+fi
+
+#######################################################
+# Check for Twitter input settings
+#######################################################
+juju-log "Check for Twitter input settings: "
+InputTwitterEnabled="$(config-get InputTwitterEnabled)"
+InputTwitterUsername="$(config-get InputTwitterUsername)"
+InputTwitterPassword="$(config-get InputTwitterPassword)"
+InputTwitterKeywords="$(config-get InputTwitterKeywords)"
+if [ $InputTwitterEnabled ] && [ ! -z "$InputTwitterUsername" ] && [ ! -z "$InputTwitterPassword" ] && [ ! -z "$InputTwitterKeywords" ]; then
+  juju-log "Found!   Setting up logstash input"
+  install -o root -g root -m 0644 ${HOME}/files/charm/input_twitter.conf ${BASEPATH}/conf.d/input_twitter.conf
+  sed -i "s|USERNAME|${InputTwitterUsername}|g" ${BASEPATH}/conf.d/input_twitter.conf
+  sed -i "s|PASSWORD|${InputTwitterPassword}|g" ${BASEPATH}/conf.d/input_twitter.conf
+  sed -i "s|KEYWORDS|${InputTwitterKeywords}|g" ${BASEPATH}/conf.d/input_twitter.conf
+else
+  juju-log "Not Found!  remove logstash input"
+  [ -f ${BASEPATH}/conf.d/input_twitter.conf ] && rm ${BASEPATH}/conf.d/input_twitter.conf
+fi
+
+juju-log "Restart logstash-agent"
+[ "$(initctl status logstash-agent | grep running)" ] && initctl restart logstash-agent || initctl start logstash-agent

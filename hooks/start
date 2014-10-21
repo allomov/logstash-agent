@@ -1,0 +1,5 @@
+#!/bin/bash
+
+juju-log "run logstash"
+[ "$(initctl status logstash-agent | grep running)" ] && initctl restart logstash-agent || initctl start logstash-agent
+juju-log "started?"

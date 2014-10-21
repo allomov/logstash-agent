@@ -1,0 +1,39 @@
+options:
+  Reload:
+    type: string
+    default: "0"
+    description: |
+      change this string to reload logstash-agent checks.
+      will rescan system for known log types and modify file inputs to match.
+  CustomLogFile:
+    type: string
+    default: ""
+    description: |
+      location of log you want to parse ... will accept wildcards
+      treat it like an array,  even if only one file.
+      Usage:  "['/var/log/test/test*.log', '/opt/test/logs/*.log']"
+  CustomLogType:
+    type: string
+    default: ""
+    description: "logstash Type setting for log file"
+  InputTwitterEnabled:
+    type: boolean
+    default: false
+    description: | 
+      enable twitter input.   before enabling need to also setting
+      InputTwitterUsername, InputTwitterPassword, InputTwitterKeywords
+  InputTwitterUsername:
+    type: string
+    default: ""
+    description: "twitter username"
+  InputTwitterPassword:
+    type: string
+    default: ""
+    description: "twitter password"
+  InputTwitterKeywords:
+    type: string
+    default: ""
+    description: |
+      twitter keywords
+      treat it like an array,  even if only one keyword.
+      Usage:  "['word1', 'word2']"

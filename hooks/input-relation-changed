@@ -1,0 +1,30 @@
+#!/bin/bash
+
+set -eux # -x for verbose logging to juju debug-log
+juju-log $JUJU_REMOTE_UNIT joined
+
+[ -z "$(relation-get host)" ] && exit 0
+
+HOME=$PWD
+. ${HOME}/hooks/common.sh
+
+LS_HOST_LIST="none"
+for MEMBER in `relation-list`
+do
+  LS_HOST=`relation-get private-address ${MEMBER}`
+  if [  ${LS_HOST_LIST} = "none" ]; then
+    LS_HOST_LIST="'${LS_HOST}'"
+  else
+    LS_HOST_LIST=${LS_HOST_LIST},"'${LS_HOST}'"
+  fi
+done
+
+if [  ${LS_HOST_LIST} = "none" ]; then
+  [ -f ${BASEPATH}/conf.d/output_redis.conf ] && rm ${BASEPATH}/conf.d/output_redis.conf
+  echo "output { file { path => \"${BASEPATH}/logs/logstash-output.log\" } } " > ${BASEPATH}/conf.d/output_file.conf
+else
+  echo "output { redis { host => [ ${LS_HOST_LIST} ] data_type => 'list' key => 'logstash' } } " > ${BASEPATH}/conf.d/output_redis.conf
+  [ -f ${BASEPATH}/conf.d/output_file.conf ] && rm ${BASEPATH}/conf.d/output_file.conf
+fi
+
+[ "$(initctl status logstash-agent | grep running)" ] && initctl restart logstash-agent || initctl start logstash-agent
