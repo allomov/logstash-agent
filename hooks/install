@@ -38,19 +38,14 @@ mv ${WORKDIR}/logstash-${VERSION} ${BASEPATH}
 
 juju-log "create skeleton dir"
 mkdir -p ${BASEPATH}/bin
-mkdir -p ${BASEPATH}/conf.d
-mkdir -p ${BASEPATH}/data
-
-juju-log "create skeleton dir"
-mkdir -p ${BASEPATH}/bin
-mkdir -p ${BASEPATH}/conf.d
+mkdir -p ${CONFIG_DIR}
 mkdir -p ${BASEPATH}/data
 mkdir -p ${BASEPATH}/logs
 
 
 juju-log "install syslog input config"
 install -o root -g root -m 0644 ${HOME}/files/charm/input_file_syslog.conf ${BASEPATH}/conf.d/input_file_syslog.conf
-sed -i "s|BASEPATH|${BASEPATH}|g" ${BASEPATH}/conf.d/input_file_syslog.conf
+sed -i "s|BASEPATH|${BASEPATH}|g" ${CONFIG_DIR}/input_file_syslog.conf
 
 juju-log "install file output - used until relationship is formed with logstash-indexer"
 echo "output { file { path => \"${BASEPATH}/logs/logstash-output.log\" } } " > ${BASEPATH}/conf.d/output_file.conf
